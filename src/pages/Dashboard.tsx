@@ -2,13 +2,23 @@ import { Target, TrendingUp, Flame, Clock } from "lucide-react";
 import { ProgressRing } from "@/components/dashboard/ProgressRing";
 import { DailyFocus } from "@/components/dashboard/DailyFocus";
 import { StatsCard } from "@/components/dashboard/StatsCard";
+import { FocusTimer } from "@/components/focus/FocusTimer";
+import { MasteryProgress } from "@/components/focus/MasteryProgress";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSkills } from "@/hooks/useSkills";
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const { skills, getTotalSeconds } = useSkills();
+  
+  const totalHours = Math.floor(getTotalSeconds() / 3600);
+  const displayName = user?.user_metadata?.full_name?.split(' ')[0] || 'there';
+
   return (
     <div className="container max-w-6xl py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground">Good morning, Alex</h1>
+        <h1 className="text-3xl font-bold text-foreground">Good morning, {displayName}</h1>
         <p className="mt-1 text-muted-foreground">
           Here's your productivity overview for today
         </p>
@@ -17,26 +27,26 @@ export default function Dashboard() {
       {/* Stats Grid */}
       <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatsCard
-          title="Tasks Completed"
-          value={12}
-          change="+3 from yesterday"
-          icon={Target}
+          title="Total Hours"
+          value={`${totalHours}h`}
+          change="Towards mastery"
+          icon={Clock}
           trend="up"
           delay={0}
+        />
+        <StatsCard
+          title="Active Skills"
+          value={skills.length}
+          change="Being tracked"
+          icon={Target}
+          trend="up"
+          delay={0.1}
         />
         <StatsCard
           title="Current Streak"
           value="7 days"
           change="Personal best!"
           icon={Flame}
-          trend="up"
-          delay={0.1}
-        />
-        <StatsCard
-          title="Focus Time"
-          value="4.5h"
-          change="+45min"
-          icon={Clock}
           trend="up"
           delay={0.2}
         />
@@ -48,6 +58,12 @@ export default function Dashboard() {
           trend="up"
           delay={0.3}
         />
+      </div>
+
+      {/* Focus Timer & Mastery Progress */}
+      <div className="grid gap-6 lg:grid-cols-2 mb-8">
+        <FocusTimer />
+        <MasteryProgress />
       </div>
 
       {/* Main Content */}
