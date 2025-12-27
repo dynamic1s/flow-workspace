@@ -12,9 +12,11 @@ import {
   Menu,
   X,
   Zap,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -29,6 +31,7 @@ const navItems = [
 
 export function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation();
+  const { signOut, user } = useAuth();
   const [isDark, setIsDark] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -88,17 +91,41 @@ export function AppLayout({ children }: AppLayoutProps) {
             })}
           </nav>
 
-          {/* Footer */}
-          <div className="border-t border-border p-4">
+          {/* User & Footer */}
+          <div className="border-t border-border p-4 space-y-3">
+            {user && (
+              <div className="flex items-center gap-3 px-2">
+                {user.user_metadata?.avatar_url && (
+                  <img 
+                    src={user.user_metadata.avatar_url} 
+                    alt="Avatar" 
+                    className="h-8 w-8 rounded-full"
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">
+                    {user.user_metadata?.full_name || user.email}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {user.email}
+                  </p>
+                </div>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <Button variant="ghost" size="icon-sm" onClick={toggleTheme}>
                 {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
-              <Link to="/settings">
-                <Button variant="ghost" size="icon-sm">
-                  <Settings className="h-4 w-4" />
+              <div className="flex items-center gap-1">
+                <Link to="/settings">
+                  <Button variant="ghost" size="icon-sm">
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Button variant="ghost" size="icon-sm" onClick={signOut}>
+                  <LogOut className="h-4 w-4" />
                 </Button>
-              </Link>
+              </div>
             </div>
           </div>
         </div>
