@@ -3,54 +3,52 @@ import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { toast } from "@/hooks/use-toast";
-
-interface DayData {
-  date: Date;
-  count: number;
-}
-
-const generateMockData = (): DayData[] => {
-  const data: DayData[] = [];
-  const today = new Date();
-  const startDate = new Date(today.getFullYear(), 0, 1);
-
-  for (let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1)) {
-    data.push({
-      date: new Date(d),
-      count: Math.random() > 0.3 ? Math.floor(Math.random() * 5) : 0,
-    });
-  }
-
-  return data;
-};
-
-const getIntensityClass = (count: number): string => {
-  if (count === 0) return "bg-muted/30";
-  if (count === 1) return "bg-primary/25";
-  if (count === 2) return "bg-primary/50";
-  if (count === 3) return "bg-primary/75";
-  return "bg-primary";
-};
+import { toast } from "sonner";
+import { useTimeEntries } from "@/hooks/useTimeEntries";
+import { useSkills } from "@/hooks/useSkills";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { getIconComponent } from "@/components/skills/CreateSkillDialog";
 
 const weekdays = ["S", "M", "T", "W", "T", "F", "S"];
 const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+const getIntensityClass = (intensity: string): string => {
+  switch (intensity) {
+    case 'none': return "bg-muted/30";
+    case 'low': return "bg-primary/25";
+    case 'medium': return "bg-primary/50";
+    case 'high': return "bg-primary";
+    default: return "bg-muted/30";
+  }
+};
+
 export function HeatmapCalendar() {
-  const [year, setYear] = useState(2025);
-  const data = useMemo(() => generateMockData(), []);
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [selectedSkillId, setSelectedSkillId] = useState<string>('all');
+  const { skills } = useSkills();
+  const { getCalendarData, getCurrentStreak, entries } = useTimeEntries(
+    selectedSkillId === 'all' ? undefined : selectedSkillId
+  );
+
+  const calendarData = getCalendarData();
+  const currentStreak = getCurrentStreak();
 
   const weeks = useMemo(() => {
-    const result: (DayData | null)[][] = [];
+    const result: { date: Date; intensity: string; seconds: number }[][] = [];
     const startDate = new Date(year, 0, 1);
     const endDate = new Date(year, 11, 31);
 
-    // Adjust start to include days from previous year if needed
     const firstDayOfYear = startDate.getDay();
     const adjustedStart = new Date(startDate);
     adjustedStart.setDate(adjustedStart.getDate() - firstDayOfYear);
 
-    let currentWeek: (DayData | null)[] = [];
+    let currentWeek: { date: Date; intensity: string; seconds: number }[] = [];
     let currentDate = new Date(adjustedStart);
 
     while (currentDate <= endDate || currentWeek.length > 0) {
@@ -63,55 +61,59 @@ export function HeatmapCalendar() {
         break;
       }
 
-      const dayData = data.find(
-        (d) => d.date.toDateString() === currentDate.toDateString()
-      );
+      const dateStr = currentDate.toISOString().split('T')[0];
+      const dayData = calendarData[dateStr];
 
-      currentWeek.push(
-        currentDate.getFullYear() === year ? dayData || { date: new Date(currentDate), count: 0 } : null
-      );
+      if (currentDate.getFullYear() === year) {
+        currentWeek.push({
+          date: new Date(currentDate),
+          intensity: dayData?.intensity || 'none',
+          seconds: dayData?.totalSeconds || 0,
+        });
+      } else {
+        currentWeek.push({
+          date: new Date(currentDate),
+          intensity: 'none',
+          seconds: 0,
+        });
+      }
+      
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
     if (currentWeek.length > 0) {
       while (currentWeek.length < 7) {
-        currentWeek.push(null);
+        currentWeek.push({
+          date: new Date(currentDate),
+          intensity: 'none',
+          seconds: 0,
+        });
+        currentDate.setDate(currentDate.getDate() + 1);
       }
       result.push(currentWeek);
     }
 
     return result;
-  }, [year, data]);
+  }, [year, calendarData]);
 
-  // Calculate streak
-  const currentStreak = useMemo(() => {
-    let streak = 0;
-    const today = new Date();
-    const sortedData = [...data].sort((a, b) => b.date.getTime() - a.date.getTime());
-
-    for (const day of sortedData) {
-      if (day.count > 0) {
-        streak++;
-      } else {
-        break;
-      }
-    }
-
-    return streak;
-  }, [data]);
-
-  const totalDays = data.filter((d) => d.count > 0).length;
+  const totalActiveDays = Object.keys(calendarData).filter(
+    date => date.startsWith(year.toString()) && calendarData[date].intensity !== 'none'
+  ).length;
 
   const handleShare = () => {
-    toast({
-      title: "Streak shared!",
-      description: "Your consistency card has been copied to clipboard.",
-    });
+    toast.success("Streak shared! (Coming soon)");
+  };
+
+  const formatTime = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    if (hours > 0) return `${hours}h ${mins}m`;
+    return `${mins}m`;
   };
 
   return (
     <div className="space-y-6">
-      {/* Streak Card - Optimized for mobile sharing */}
+      {/* Streak Card */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -124,13 +126,13 @@ export function HeatmapCalendar() {
         <p className="mt-1 text-lg text-muted-foreground">Day Streak</p>
         <div className="mt-4 flex items-center justify-center gap-6 text-sm">
           <div>
-            <p className="text-2xl font-semibold text-foreground">{totalDays}</p>
+            <p className="text-2xl font-semibold text-foreground">{totalActiveDays}</p>
             <p className="text-muted-foreground">Active Days</p>
           </div>
           <div className="h-10 w-px bg-border" />
           <div>
             <p className="text-2xl font-semibold text-foreground">
-              {Math.round((totalDays / 365) * 100)}%
+              {Math.round((totalActiveDays / 365) * 100)}%
             </p>
             <p className="text-muted-foreground">Consistency</p>
           </div>
@@ -146,8 +148,30 @@ export function HeatmapCalendar() {
         </Button>
       </motion.div>
 
-      {/* Heatmap */}
-      <div className="glass-card overflow-hidden rounded-2xl p-6">
+      {/* Filter by Skill */}
+      <div className="glass-card rounded-2xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <Select value={selectedSkillId} onValueChange={setSelectedSkillId}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="All Skills" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Skills</SelectItem>
+              {skills.map((skill) => {
+                const IconComponent = getIconComponent(skill.icon);
+                return (
+                  <SelectItem key={skill.id} value={skill.id}>
+                    <div className="flex items-center gap-2">
+                      <IconComponent className="w-4 h-4" style={{ color: skill.color }} />
+                      {skill.name}
+                    </div>
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* Year Navigation */}
         <div className="mb-6 flex items-center justify-between">
           <Button
@@ -170,7 +194,7 @@ export function HeatmapCalendar() {
 
         {/* Month Labels */}
         <div className="mb-2 ml-8 flex">
-          {months.map((month, i) => (
+          {months.map((month) => (
             <div
               key={month}
               className="text-xs text-muted-foreground"
@@ -209,12 +233,14 @@ export function HeatmapCalendar() {
                       duration: 0.2,
                     }}
                     className={cn(
-                      "streak-cell h-3 w-3 rounded-sm",
-                      day ? getIntensityClass(day.count) : "bg-transparent"
+                      "streak-cell h-3 w-3 rounded-sm cursor-pointer",
+                      day.date.getFullYear() === year 
+                        ? getIntensityClass(day.intensity) 
+                        : "bg-transparent"
                     )}
                     title={
-                      day
-                        ? `${day.date.toLocaleDateString()}: ${day.count} activities`
+                      day.date.getFullYear() === year
+                        ? `${day.date.toLocaleDateString()}: ${day.seconds > 0 ? formatTime(day.seconds) : 'No activity'}`
                         : ""
                     }
                   />
@@ -227,13 +253,17 @@ export function HeatmapCalendar() {
         {/* Legend */}
         <div className="mt-4 flex items-center justify-end gap-2">
           <span className="text-xs text-muted-foreground">Less</span>
-          {[0, 1, 2, 3, 4].map((level) => (
-            <div
-              key={level}
-              className={cn("h-3 w-3 rounded-sm", getIntensityClass(level))}
-            />
-          ))}
+          <div className={cn("h-3 w-3 rounded-sm", getIntensityClass('none'))} />
+          <div className={cn("h-3 w-3 rounded-sm", getIntensityClass('low'))} />
+          <div className={cn("h-3 w-3 rounded-sm", getIntensityClass('medium'))} />
+          <div className={cn("h-3 w-3 rounded-sm", getIntensityClass('high'))} />
           <span className="text-xs text-muted-foreground">More</span>
+        </div>
+
+        <div className="mt-3 flex items-center justify-center gap-4 text-xs text-muted-foreground">
+          <span>Low: &lt;1h</span>
+          <span>Medium: 1-2h</span>
+          <span>High: 3h+</span>
         </div>
       </div>
     </div>
