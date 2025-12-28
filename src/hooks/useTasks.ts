@@ -59,10 +59,9 @@ export function useTasks(skillId?: string) {
         .from('tasks')
         .select('*')
         .eq('user_id', user.id)
-        .eq('completed', true)
-        .gte('completed_at', today.toISOString())
-        .lt('completed_at', tomorrow.toISOString())
-        .order('completed_at', { ascending: false });
+        .gte('due_date', today.toISOString())
+        .lt('due_date', tomorrow.toISOString())
+        .order('created_at', { ascending: false });
       
       if (error) throw error;
       return data as Task[];
@@ -82,7 +81,7 @@ export function useTasks(skillId?: string) {
           skill_id: task.skill_id || null,
           description: task.description || null,
           priority: task.priority || 0,
-          due_date: task.due_date || null,
+          due_date: task.due_date || new Date().toISOString(),
         })
         .select()
         .single();
@@ -177,27 +176,20 @@ export function useTasks(skillId?: string) {
     },
   });
 
-  const getCompletionRate = (skillId?: string) => {
-    const tasks = tasksQuery.data || [];
-    const filteredTasks = skillId 
-      ? tasks.filter(t => t.skill_id === skillId)
-      : tasks;
-    
-    if (filteredTasks.length === 0) return 0;
-    
-    const completed = filteredTasks.filter(t => t.completed).length;
-    return Math.round((completed / filteredTasks.length) * 100);
-  };
+  const completionRate = (
+    (todayTasksQuery.data?.filter(t => t.completed).length || 0) / 
+    (todayTasksQuery.data?.length || 1)
+  ) * 100;
 
   return {
     tasks: tasksQuery.data || [],
     todayTasks: todayTasksQuery.data || [],
-    isLoading: tasksQuery.isLoading,
-    error: tasksQuery.error,
+    isLoading: tasksQuery.isLoading || todayTasksQuery.isLoading,
+    error: tasksQuery.error || todayTasksQuery.error,
     createTask,
     updateTask,
     toggleTask,
     deleteTask,
-    getCompletionRate,
+    completionRate,
   };
 }

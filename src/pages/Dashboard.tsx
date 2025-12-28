@@ -6,13 +6,16 @@ import { FocusTimer } from "@/components/focus/FocusTimer";
 import { MasteryProgress } from "@/components/focus/MasteryProgress";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSkills } from "@/hooks/useSkills";
+import { useTasks } from "@/hooks/useTasks";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { skills, getTotalSeconds } = useSkills();
+  const { todayTasks, completionRate } = useTasks();
   
   const totalHours = Math.floor(getTotalSeconds() / 3600);
   const displayName = user?.user_metadata?.full_name?.split(' ')[0] || 'there';
+  const remainingTasks = todayTasks.filter(t => !t.completed).length;
 
   return (
     <div className="container max-w-6xl py-8">
@@ -52,7 +55,7 @@ export default function Dashboard() {
         />
         <StatsCard
           title="Productivity"
-          value="87%"
+          value={`${Math.round(completionRate)}%`}
           change="+12% this week"
           icon={TrendingUp}
           trend="up"
@@ -70,13 +73,13 @@ export default function Dashboard() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Progress Ring */}
         <div className="glass-card flex flex-col items-center justify-center rounded-2xl p-8">
-          <ProgressRing progress={67} size={220} strokeWidth={14} />
+          <ProgressRing progress={completionRate} size={220} strokeWidth={14} />
           <div className="mt-6 text-center">
             <p className="text-sm text-muted-foreground">
-              You're ahead of schedule today!
+              {completionRate > 80 ? "You're on fire today!" : "You're making great progress!"}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              4 tasks remaining • Est. 2h to complete
+              {remainingTasks > 0 ? `${remainingTasks} tasks remaining` : "All tasks complete! 🎉"}
             </p>
           </div>
         </div>
