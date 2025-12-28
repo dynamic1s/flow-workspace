@@ -24,7 +24,7 @@ interface AppLayoutProps {
 
 const navItems = [
   { path: "/", icon: LayoutDashboard, label: "Dashboard" },
-  { path: "/roadmap", icon: Map, label: "Roadmap" },
+  { path: "/journal", icon: Map, label: "Journal" },
   { path: "/calendar", icon: Calendar, label: "Calendar" },
   { path: "/projects", icon: FolderKanban, label: "Projects" },
 ];

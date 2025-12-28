@@ -7,9 +7,9 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Dashboard from "./pages/Dashboard";
-import Roadmap from "./pages/Roadmap";
 import CalendarPage from "./pages/CalendarPage";
 import Projects from "./pages/Projects";
+import Journal from "./pages/Journal";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -35,11 +35,11 @@ const App = () => (
               }
             />
             <Route
-              path="/roadmap"
+              path="/journal"
               element={
                 <ProtectedRoute>
                   <AppLayout>
-                    <Roadmap />
+                    <Journal />
                   </AppLayout>
                 </ProtectedRoute>
               }

@@ -11,22 +11,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTimer } from '@/hooks/useTimer';
 import { useSkills } from '@/hooks/useSkills';
+import { CreateSkillDialog, getIconComponent } from '@/components/skills/CreateSkillDialog';
 
 export function FocusTimer() {
   const timer = useTimer();
-  const { skills, createSkill, addTimeEntry } = useSkills();
+  const { skills, addTimeEntry } = useSkills();
   const [selectedSkillId, setSelectedSkillId] = useState<string>('');
-  const [newSkillName, setNewSkillName] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   
   // Manual entry state
@@ -49,13 +42,6 @@ export function FocusTimer() {
         duration_seconds: result.durationSeconds,
       });
     }
-  };
-
-  const handleCreateSkill = async () => {
-    if (!newSkillName.trim()) return;
-    await createSkill.mutateAsync({ name: newSkillName.trim() });
-    setNewSkillName('');
-    setIsDialogOpen(false);
   };
 
   const handleManualEntry = async () => {
@@ -83,6 +69,16 @@ export function FocusTimer() {
     setManualSkillId('');
   };
 
+  const renderSkillOption = (skill: typeof skills[0]) => {
+    const IconComponent = getIconComponent(skill.icon);
+    return (
+      <div className="flex items-center gap-2">
+        <IconComponent className="w-4 h-4" style={{ color: skill.color }} />
+        {skill.name}
+      </div>
+    );
+  };
+
   return (
     <div className="glass-card rounded-2xl p-6 md:p-8">
       <div className="flex items-center justify-between mb-6">
@@ -91,35 +87,13 @@ export function FocusTimer() {
           Focus Mode
         </h2>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button variant="ghost" size="sm" className="gap-2">
-              <Plus className="w-4 h-4" />
-              New Skill
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Skill</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 pt-4">
-              <div>
-                <Label htmlFor="skill-name">Skill Name</Label>
-                <Input
-                  id="skill-name"
-                  value={newSkillName}
-                  onChange={(e) => setNewSkillName(e.target.value)}
-                  placeholder="e.g., Piano, Coding, Design"
-                  className="mt-1.5"
-                />
-              </div>
-              <Button onClick={handleCreateSkill} className="w-full">
-                Create Skill
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button variant="ghost" size="sm" className="gap-2" onClick={() => setIsDialogOpen(true)}>
+          <Plus className="w-4 h-4" />
+          New Skill
+        </Button>
       </div>
+
+      <CreateSkillDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} />
 
       <Tabs defaultValue="live" className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-6">
@@ -168,10 +142,7 @@ export function FocusTimer() {
               <SelectContent>
                 {skills.map((skill) => (
                   <SelectItem key={skill.id} value={skill.id}>
-                    <div className="flex items-center gap-2">
-                      <Target className="w-4 h-4" style={{ color: skill.color }} />
-                      {skill.name}
-                    </div>
+                    {renderSkillOption(skill)}
                   </SelectItem>
                 ))}
                 {skills.length === 0 && (
@@ -270,10 +241,7 @@ export function FocusTimer() {
               <SelectContent>
                 {skills.map((skill) => (
                   <SelectItem key={skill.id} value={skill.id}>
-                    <div className="flex items-center gap-2">
-                      <Target className="w-4 h-4" style={{ color: skill.color }} />
-                      {skill.name}
-                    </div>
+                    {renderSkillOption(skill)}
                   </SelectItem>
                 ))}
               </SelectContent>
