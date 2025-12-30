@@ -18,6 +18,7 @@ import { useTasks } from '@/hooks/useTasks';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from '@/hooks/use-toast';
 
 const MOODS = [
   { emoji: '😊', label: 'Great', value: 'great' },
@@ -80,6 +81,7 @@ function AnnotationEditDialog({ open, onOpenChange, initialAnnotationContent, on
 export default function Journal() {
   const { todayEntry, entries, createEntry, updateEntry, createAnnotation, updateAnnotation, annotations } = useJournal();
   const { tasks: allTasks, toggleTask } = useTasks(); 
+  const { toast } = useToast();
   const [content, setContent] = useState(todayEntry?.content || '');
   const [mood, setMood] = useState(todayEntry?.mood || '');
   const [selectedEntryDate, setSelectedEntryDate] = useState(new Date().toISOString().split('T')[0]);
@@ -120,18 +122,42 @@ export default function Journal() {
   };
 
   const handleLinkTask = async () => {
-    const entry = entries.find(e => e.entry_date === selectedEntryDate);
-    if (!selectedTaskId || !entry) return;
-    
-    await createAnnotation.mutateAsync({
-      journal_entry_id: entry.id,
-      task_id: selectedTaskId,
-      annotation: annotation.trim() || undefined,
-    });
-    
-    setSelectedTaskId(null);
-    setAnnotation('');
-    setIsLinkDialogOpen(false);
+    if (!selectedTaskId) return;
+
+    try {
+      let entry = entries.find(e => e.entry_date === selectedEntryDate);
+
+      if (!entry) {
+        entry = await createEntry.mutateAsync({
+          content: "Journal entry started to link a task.",
+          mood: mood || undefined,
+          entry_date: selectedEntryDate,
+        });
+        toast({
+          title: "Journal Entry Created",
+          description: "A new entry was automatically created to link your task.",
+        });
+      }
+
+      if (entry) {
+        await createAnnotation.mutateAsync({
+          journal_entry_id: entry.id,
+          task_id: selectedTaskId,
+          annotation: annotation.trim() || undefined,
+        });
+      }
+
+      setSelectedTaskId(null);
+      setAnnotation('');
+      setIsLinkDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to link task:", error);
+      toast({
+        title: "Error Linking Task",
+        description: "Could not link the task. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleUpdateAnnotation = async (newAnnotationContent: string) => {
@@ -246,7 +272,7 @@ export default function Journal() {
                   {linkedAnnotations.map((ann) => (
                     <button
                       key={ann.id}
-                      className="w-full text-left p-2 rounded-lg hover:bg-muted/70 transition-colors cursor-pointer group"
+                      className="w-full text-left p-2 rounded-lg hover:bg-muted/70 transition-colors cursor-pointer"
                       onClick={() => {
                         setAnnotationToEditId(ann.id);
                         setAnnotationToEditContent(ann.annotation || '');
@@ -255,7 +281,7 @@ export default function Journal() {
                     >
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-medium text-muted-foreground">{getTaskTitle(ann.task_id)}</p>
-                        <Edit2 className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <Edit2 className="w-4 h-4 text-muted-foreground transition-opacity" />
                       </div>
                       <p className="text-xs text-foreground italic pl-2 border-l-2 border-primary/50">
                         {ann.annotation || "No annotation provided."}
@@ -270,7 +296,7 @@ export default function Journal() {
               <p className="text-sm text-muted-foreground">
                 {content.length} characters
               </p>
-              <Button onClick={handleSave} disabled={!content.trim()}>
+              <Button onClick={handleSave} disabled={!content.trim() && !entries.find(e => e.entry_date === selectedEntryDate)}>
                 {entries.find(e => e.entry_date === selectedEntryDate) ? 'Update Entry' : 'Save Entry'}
               </Button>
             </div>
@@ -312,13 +338,14 @@ export default function Journal() {
                 <div className="space-y-2 pr-4">
                   {filteredTasks.map((task) => {
                       const isOverdue = task.due_date && new Date(task.due_date) < today && !task.completed;
+                      const isLinked = linkedAnnotations.some(a => a.task_id === task.id);
                       return (
                         <div
                           key={task.id}
                           className={cn(
                             "p-3 rounded-lg bg-muted/50 flex items-center justify-between gap-2",
                             isOverdue && 'bg-destructive/20',
-                            linkedAnnotations.some(a => a.task_id === task.id) && "ring-1 ring-primary/50"
+                            isLinked && "ring-1 ring-primary/50"
                           )}
                         >
                            <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -335,7 +362,7 @@ export default function Journal() {
                               )}
                             </div>
                           </div>
-                          {entries.find(e => e.entry_date === selectedEntryDate) && !linkedAnnotations.some(a => a.task_id === task.id) && (
+                          {!isLinked ? (
                             <Button
                               variant="ghost"
                               size="icon-sm"
@@ -346,8 +373,7 @@ export default function Journal() {
                             >
                               <Link2 className="w-3.5 h-3.5" />
                             </Button>
-                          )}
-                          {linkedAnnotations.some(a => a.task_id === task.id) && (
+                          ) : (
                             <Badge variant="secondary" className="text-xs">
                               Linked
                             </Badge>

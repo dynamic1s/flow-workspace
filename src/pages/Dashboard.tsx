@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { Target, TrendingUp, Flame, Clock, Plus } from "lucide-react";
+import { TrendingUp, Flame, Clock, Plus } from "lucide-react";
 import { ProgressRing } from "@/components/dashboard/ProgressRing";
 import { DailyFocus } from "@/components/dashboard/DailyFocus";
 import { StatsCard } from "@/components/dashboard/StatsCard";
@@ -10,13 +9,14 @@ import { useGoals } from "@/hooks/useGoals";
 import { useTasks } from "@/hooks/useTasks";
 import { CreateGoalDialog } from "@/components/goals/CreateGoalDialog";
 import { CalendarView } from "@/components/calendar/CalendarView";
+import { useState } from "react";
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { goals, isLoading: goalsLoading } = useGoals();
+  const { goals } = useGoals();
   const { todayTasks, completionRate, completedTodayCount } = useTasks();
   const [isCreateGoalOpen, setCreateGoalOpen] = useState(false);
-  
+
   const totalSeconds = goals.reduce((acc, goal) => acc + goal.total_seconds, 0);
   const totalHours = Math.floor(totalSeconds / 3600);
   const displayName = user?.user_metadata?.full_name?.split(' ')[0] || 'there';
@@ -48,7 +48,7 @@ export default function Dashboard() {
           title="Active Goals"
           value={goals.length}
           change="Being tracked"
-          icon={Target}
+          icon={TrendingUp} 
           trend="up"
           delay={0.1}
         />
@@ -79,10 +79,10 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="flex flex-col lg:grid lg:grid-cols-2 gap-6">
         {/* Progress Ring */}
-        <div className="glass-card flex flex-col items-center justify-center rounded-2xl p-8">
-          <ProgressRing progress={completionRate} size={220} strokeWidth={14} />
+        <div className="glass-card flex flex-col items-center justify-center rounded-2xl p-8 w-full">
+          <ProgressRing progress={completionRate} className="w-48 h-48 sm:w-56 sm:h-56 md:w-64 md:h-64" />
           <div className="mt-6 text-center">
             <p className="text-sm text-muted-foreground">
               {completionRate > 80 ? "You're on fire today!" : "You're making great progress!"}
@@ -98,9 +98,7 @@ export default function Dashboard() {
       </div>
 
       {/* Calendar View */}
-      <div className="mt-8">
-        <CalendarView />
-      </div>
+      
     </div>
   );
 }

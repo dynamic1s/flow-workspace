@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      resources: {
+        Row: {
+          id: string
+          created_at: string
+          user_id: string
+          goal_id: string | null
+          title: string
+          url: string
+          type: "video" | "article" | "book" | "course"
+          status: "to-process" | "in-progress" | "completed"
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          user_id: string
+          goal_id?: string | null
+          title: string
+          url: string
+          type?: "video" | "article" | "book" | "course"
+          status?: "to-process" | "in-progress" | "completed"
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          user_id?: string
+          goal_id?: string | null
+          title?: string
+          url?: string
+          type?: "video" | "article" | "book" | "course"
+          status?: "to-process" | "in-progress" | "completed"
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resources_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       journal_entries: {
         Row: {
           content: string
@@ -113,39 +154,6 @@ export type Database = {
         }
         Relationships: []
       }
-      projects: {
-        Row: {
-          color: string | null
-          created_at: string
-          description: string | null
-          icon: string | null
-          id: string
-          name: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          color?: string | null
-          created_at?: string
-          description?: string | null
-          icon?: string | null
-          id?: string
-          name: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          color?: string | null
-          created_at?: string
-          description?: string | null
-          icon?: string | null
-          id?: string
-          name?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       skills: {
         Row: {
           color: string | null
@@ -154,7 +162,6 @@ export type Database = {
           icon: string | null
           id: string
           name: string
-          project_id: string | null
           total_seconds: number
           type: string | null
           updated_at: string
@@ -167,7 +174,6 @@ export type Database = {
           icon?: string | null
           id?: string
           name: string
-          project_id?: string | null
           total_seconds?: number
           type?: string | null
           updated_at?: string
@@ -180,21 +186,12 @@ export type Database = {
           icon?: string | null
           id?: string
           name?: string
-          project_id?: string | null
           total_seconds?: number
           type?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "skills_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       tasks: {
         Row: {

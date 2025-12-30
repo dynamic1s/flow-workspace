@@ -176,15 +176,31 @@ export function useTasks() {
   ) * 100;
 
   const allTasks = tasksQuery.data || [];
-  const completedTodayCount = allTasks.filter(t => {
-    if (!t.completed_at) return false;
-    const completedDate = new Date(t.completed_at);
-    const today = new Date();
-    return completedDate.getDate() === today.getDate() &&
-           completedDate.getMonth() === today.getMonth() &&
-           completedDate.getFullYear() === today.getFullYear();
-  }).length;
-
+  const todayTasksQueryc = useQuery({
+    queryKey: ['tasks-compeleted-today', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('completed',true)
+        .gte('due_date', today.toISOString())
+        .lt('due_date', tomorrow.toISOString())
+        
+      if (error) throw error;
+      return data as Task[];
+    },
+    enabled: !!user,
+  });
+  const completedToday = todayTasksQueryc.data || []
+ const completedTodayCount = completedToday.length
   return {
     tasks: allTasks,
     todayTasks: todayTasksQuery.data || [],

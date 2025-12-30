@@ -8,6 +8,7 @@
     "svelte.svelte-vscode"
     "vue.volar"
   ];
+  services.docker.enable = true;
   idx.previews = {
     previews = {
       web = {

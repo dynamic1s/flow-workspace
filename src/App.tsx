@@ -8,10 +8,10 @@ import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Dashboard from "./pages/Dashboard";
 import CalendarPage from "./pages/CalendarPage";
-import Projects from "./pages/Projects";
 import Journal from "./pages/Journal";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import ResourcesPage from "./pages/Resources";
 
 const queryClient = new QueryClient();
 
@@ -55,11 +55,11 @@ const App = () => (
               }
             />
             <Route
-              path="/projects"
+              path="/resources"
               element={
                 <ProtectedRoute>
                   <AppLayout>
-                    <Projects />
+                    <ResourcesPage />
                   </AppLayout>
                 </ProtectedRoute>
               }

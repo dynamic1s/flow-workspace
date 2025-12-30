@@ -5,7 +5,6 @@ import { Check, Plus, MinusCircle } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTasks } from "@/hooks/useTasks";
-import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,39 +15,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { DatePicker } from "@/components/ui/date-picker";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Pill } from "@/components/ui/Pill";
+import { CreateTaskDialog } from "@/components/tasks/CreateTaskDialog";
 
-const priorityMap = {
-  3: { name: "High", color: "border-l-destructive" },
-  2: { name: "Medium", color: "border-l-warning" },
-  1: { name: "Low", color: "border-l-success" },
+const priorityMap: { [key: number]: { name: string; color: string; pillColor: 'red' | 'yellow' | 'green' } } = {
+  3: { name: "High", color: "border-l-destructive", pillColor: "red" },
+  2: { name: "Medium", color: "border-l-warning", pillColor: "yellow" },
+  1: { name: "Low", color: "border-l-success", pillColor: "green" },
 };
 
 export function DailyFocus() {
-  const { todayTasks, createTask, toggleTask, deleteTask, isLoading, completedTodayCount } = useTasks();
-  const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [newDueDate, setNewDueDate] = useState<Date | undefined>(undefined);
-  const [newPriority, setNewPriority] = useState<number>(2);
+  const { todayTasks, toggleTask, deleteTask, isLoading, completedTodayCount } = useTasks();
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
+  const [isCreateTaskOpen, setCreateTaskOpen] = useState(false);
 
   const handleToggleTask = (id: string, completed: boolean) => {
     toggleTask.mutate({ id, completed: !completed });
   };
 
-  const handleCreateTask = () => {
-    if (newTaskTitle.trim()) {
-      createTask.mutate({
-        title: newTaskTitle.trim(),
-        priority: newPriority,
-        due_date: newDueDate ? newDueDate.toISOString() : new Date().toISOString(),
-      });
-      setNewTaskTitle("");
-      setNewDueDate(undefined);
-      setNewPriority(2);
-    }
-  };
-  
   const handleDeleteTask = () => {
     if (taskToDelete) {
       deleteTask.mutate(taskToDelete);
@@ -56,11 +40,13 @@ export function DailyFocus() {
     }
   }
 
-  const totalTasks = todayTasks.length + completedTodayCount;
+  const totalTasks = todayTasks.length ;
 
   return (
     <>
-      <div className="glass-card rounded-2xl p-6">
+      <CreateTaskDialog open={isCreateTaskOpen} onOpenChange={setCreateTaskOpen} />
+
+      <div className="glass-card rounded-2xl p-6 w-full">
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-foreground">Daily Focus</h2>
@@ -68,32 +54,12 @@ export function DailyFocus() {
               {completedTodayCount} of {totalTasks} completed today
             </p>
           </div>
-        </div>
-        
-        <div className="flex gap-2 mb-4">
-          <Input 
-            placeholder="Add a new task..."
-            value={newTaskTitle}
-            onChange={(e) => setNewTaskTitle(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleCreateTask()}
-            className="flex-grow"
-          />
-          <DatePicker date={newDueDate} setDate={setNewDueDate} />
-          <Select onValueChange={(value) => setNewPriority(parseInt(value))} defaultValue="2">
-            <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="Priority" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="3">High</SelectItem>
-              <SelectItem value="2">Medium</SelectItem>
-              <SelectItem value="1">Low</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button onClick={handleCreateTask} size="icon">
-            <Plus className="h-4 w-4" />
+          <Button onClick={() => setCreateTaskOpen(true)} size="sm" variant="outline">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Task
           </Button>
         </div>
-
+        
         <div className="space-y-3 h-48 overflow-y-auto pr-1">
           <AnimatePresence>
             {isLoading ? (
@@ -112,7 +78,7 @@ export function DailyFocus() {
                   exit={{ opacity: 0, x: 20 }}
                   transition={{ delay: index * 0.05 }}
                   className={cn(
-                    "group relative flex items-center gap-3 rounded-xl border-l-4 bg-muted/30 p-3 pr-8 transition-all duration-200 hover:bg-muted/50",
+                    "group relative flex items-center gap-3 rounded-xl border-l-4 bg-muted/30 p-3 pr-10 transition-all duration-200 hover:bg-muted/50",
                     priorityMap[task.priority]?.color || "border-l-primary",
                     task.completed && "opacity-60"
                   )}
@@ -138,6 +104,12 @@ export function DailyFocus() {
                   <span className={cn("flex-1 text-sm font-medium truncate", task.completed && "text-muted-foreground line-through")}>
                     {task.title}
                   </span>
+
+                  {priorityMap[task.priority] && (
+                    <Pill color={priorityMap[task.priority].pillColor}>
+                      {priorityMap[task.priority].name}
+                    </Pill>
+                  )}
 
                   <Button
                       variant="ghost"

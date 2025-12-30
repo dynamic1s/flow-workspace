@@ -3,23 +3,24 @@ import { cn } from "@/lib/utils";
 
 interface ProgressRingProps {
   progress: number;
-  size?: number;
-  strokeWidth?: number;
   className?: string;
 }
 
 export function ProgressRing({
   progress,
-  size = 200,
-  strokeWidth = 12,
   className,
 }: ProgressRingProps) {
+
+  // Default values that can be overridden by Tailwind classes
+  const size = 200; 
+  const strokeWidth = 12;
+
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const offset = circumference - (progress / 100) * circumference;
 
   return (
-    <div className={cn("relative inline-flex items-center justify-center", className)}>
+    <div className={cn("relative inline-flex items-center justify-center", className)} style={{ width: size, height: size }}>
       <svg width={size} height={size} className="progress-ring">
         {/* Background circle */}
         <circle
@@ -61,7 +62,7 @@ export function ProgressRing({
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.5, duration: 0.5 }}
         >
-          {progress}%
+          {progress.toFixed(2)}%
         </motion.span>
         <span className="text-sm text-muted-foreground">Daily Progress</span>
       </div>

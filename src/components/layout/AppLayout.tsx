@@ -1,11 +1,10 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
   Map,
   Calendar,
-  FolderKanban,
   Settings,
   Moon,
   Sun,
@@ -13,10 +12,21 @@ import {
   X,
   Zap,
   LogOut,
+  Library,
+  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -26,7 +36,7 @@ const navItems = [
   { path: "/", icon: LayoutDashboard, label: "Dashboard" },
   { path: "/journal", icon: Map, label: "Journal" },
   { path: "/calendar", icon: Calendar, label: "Calendar" },
-  { path: "/projects", icon: FolderKanban, label: "Projects" },
+  { path: "/resources", icon: Library, label: "Resources" },
 ];
 
 export function AppLayout({ children }: AppLayoutProps) {
@@ -34,6 +44,17 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { signOut, user } = useAuth();
   const [isDark, setIsDark] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.classList.add('no-scroll');
+    } else {
+      document.body.classList.remove('no-scroll');
+    }
+    return () => {
+      document.body.classList.remove('no-scroll');
+    };
+  }, [sidebarOpen]);
 
   const toggleTheme = () => {
     setIsDark(!isDark);
@@ -143,6 +164,31 @@ export function AppLayout({ children }: AppLayoutProps) {
           <Button variant="ghost" size="icon-sm" onClick={toggleTheme}>
             {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full">
+                {user?.user_metadata?.avatar_url ? (
+                  <img
+                    src={user.user_metadata.avatar_url}
+                    alt="Avatar"
+                    className="h-8 w-8 rounded-full"
+                  />
+                ) : (
+                  <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                    <User className="h-4 w-4"/>
+                  </div>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={signOut}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button variant="ghost" size="icon-sm" onClick={() => setSidebarOpen(!sidebarOpen)}>
             {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </Button>
@@ -164,30 +210,32 @@ export function AppLayout({ children }: AppLayoutProps) {
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 20, stiffness: 300 }}
-              className="fixed right-0 top-14 z-50 h-[calc(100vh-3.5rem)] w-64 border-l border-border bg-card p-4 lg:hidden"
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed right-0 top-14 z-50 flex h-[calc(100vh-3.5rem)] w-64 flex-col border-l border-border bg-card lg:hidden"
             >
-              <nav className="space-y-1">
-                {navItems.map((item) => {
-                  const isActive = location.pathname === item.path;
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      onClick={() => setSidebarOpen(false)}
-                      className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
-                        isActive
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                      )}
-                    >
-                      <item.icon className="h-5 w-5" />
-                      {item.label}
-                    </Link>
-                  );
-                })}
-              </nav>
+              <ScrollArea className="flex-grow p-4">
+                <nav className="space-y-1">
+                    {navItems.map((item) => {
+                    const isActive = location.pathname === item.path;
+                    return (
+                        <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setSidebarOpen(false)}
+                        className={cn(
+                            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+                            isActive
+                            ? "bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        )}
+                        >
+                        <item.icon className="h-5 w-5" />
+                        {item.label}
+                        </Link>
+                    );
+                    })}
+                </nav>
+              </ScrollArea>
             </motion.div>
           </>
         )}
@@ -195,13 +243,13 @@ export function AppLayout({ children }: AppLayoutProps) {
 
       {/* Main Content */}
       <main className="lg:pl-64">
-        <div className="min-h-screen pt-14 pb-20 lg:pt-0 lg:pb-0">
+        <div className="min-h-screen pb-20 pt-14 lg:pb-0 lg:pt-0">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
+              exit={{ opacity: 0, y: -2.0 }}
               transition={{ duration: 0.2 }}
               className="h-full"
             >
