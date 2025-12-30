@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -159,6 +160,30 @@ export function useJournal() {
     },
   });
 
+  const updateAnnotation = useMutation({
+    mutationFn: async ({ id, annotation }: { id: string; annotation: string | null }) => {
+      if (!user) throw new Error('Not authenticated');
+
+      const { data, error } = await supabase
+        .from('journal_task_annotations')
+        .update({ annotation })
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as JournalTaskAnnotation;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['journal-annotations'] });
+      toast.success('Annotation updated');
+    },
+    onError: (error) => {
+      toast.error('Failed to update annotation: ' + error.message);
+    },
+  });
+
   const deleteAnnotation = useMutation({
     mutationFn: async (id: string) => {
       if (!user) throw new Error('Not authenticated');
@@ -176,6 +201,23 @@ export function useJournal() {
     },
   });
 
+  const useTasksForEntry = (entryDate: string) => {
+    return useQuery({
+      queryKey: ['tasks-for-entry', user?.id, entryDate],
+      queryFn: async () => {
+        if (!user) return [];
+        const { data, error } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('due_date', entryDate)
+        if (error) throw error;
+        return data;
+      },
+      enabled: !!user && !!entryDate,
+    });
+  };
+
   return {
     entries: entriesQuery.data || [],
     todayEntry: todayEntryQuery.data,
@@ -184,6 +226,8 @@ export function useJournal() {
     createEntry,
     updateEntry,
     createAnnotation,
+    updateAnnotation,
     deleteAnnotation,
+    useTasksForEntry,
   };
 }

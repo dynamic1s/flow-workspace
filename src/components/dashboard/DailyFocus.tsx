@@ -1,17 +1,11 @@
+
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Plus, Sparkles, Flag, MinusCircle } from "lucide-react";
+import { Check, Plus, MinusCircle } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTasks } from "@/hooks/useTasks";
 import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +16,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { DatePicker } from "@/components/ui/date-picker";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const priorityMap = {
   3: { name: "High", color: "border-l-destructive" },
@@ -32,23 +28,24 @@ const priorityMap = {
 export function DailyFocus() {
   const { todayTasks, createTask, toggleTask, deleteTask, isLoading, completedTodayCount } = useTasks();
   const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [newTaskPriority, setNewTaskPriority] = useState(2);
-  const [celebratingId, setCelebratingId] = useState<string | null>(null);
+  const [newDueDate, setNewDueDate] = useState<Date | undefined>(undefined);
+  const [newPriority, setNewPriority] = useState<number>(2);
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
 
   const handleToggleTask = (id: string, completed: boolean) => {
     toggleTask.mutate({ id, completed: !completed });
-    if (!completed) {
-      setCelebratingId(id);
-      setTimeout(() => setCelebratingId(null), 600);
-    }
   };
 
   const handleCreateTask = () => {
     if (newTaskTitle.trim()) {
-      createTask.mutate({ title: newTaskTitle.trim(), priority: newTaskPriority });
+      createTask.mutate({
+        title: newTaskTitle.trim(),
+        priority: newPriority,
+        due_date: newDueDate ? newDueDate.toISOString() : new Date().toISOString(),
+      });
       setNewTaskTitle("");
-      setNewTaskPriority(2);
+      setNewDueDate(undefined);
+      setNewPriority(2);
     }
   };
   
@@ -59,126 +56,102 @@ export function DailyFocus() {
     }
   }
 
+  const totalTasks = todayTasks.length + completedTodayCount;
+
   return (
-    <div className="glass-card rounded-2xl p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">Daily Focus</h2>
-          <p className="text-sm text-muted-foreground">
-            {completedTodayCount} of {todayTasks.length + completedTodayCount} completed today
-          </p>
+    <>
+      <div className="glass-card rounded-2xl p-6">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Daily Focus</h2>
+            <p className="text-sm text-muted-foreground">
+              {completedTodayCount} of {totalTasks} completed today
+            </p>
+          </div>
         </div>
-      </div>
-      
-      <div className="flex gap-2 mb-4">
-        <Input 
-          placeholder="Add a new task..."
-          value={newTaskTitle}
-          onChange={(e) => setNewTaskTitle(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleCreateTask()}
-        />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon">
-              <Flag className={cn("h-4 w-4", 
-                newTaskPriority === 3 && "text-destructive",
-                newTaskPriority === 2 && "text-warning",
-                newTaskPriority === 1 && "text-success"
-              )} />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuRadioGroup value={String(newTaskPriority)} onValueChange={(v) => setNewTaskPriority(Number(v))}>
-              <DropdownMenuRadioItem value="3">High</DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="2">Medium</DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="1">Low</DropdownMenuRadioItem>
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Button onClick={handleCreateTask} size="icon">
-          <Plus className="h-4 w-4" />
-        </Button>
-      </div>
+        
+        <div className="flex gap-2 mb-4">
+          <Input 
+            placeholder="Add a new task..."
+            value={newTaskTitle}
+            onChange={(e) => setNewTaskTitle(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleCreateTask()}
+            className="flex-grow"
+          />
+          <DatePicker date={newDueDate} setDate={setNewDueDate} />
+          <Select onValueChange={(value) => setNewPriority(parseInt(value))} defaultValue="2">
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Priority" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="3">High</SelectItem>
+              <SelectItem value="2">Medium</SelectItem>
+              <SelectItem value="1">Low</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={handleCreateTask} size="icon">
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
 
-      <div className="space-y-3 h-48 overflow-y-auto pr-1">
-        <AnimatePresence>
-          {isLoading ? (
-            <p className="text-muted-foreground">Loading tasks...</p>
-          ) : todayTasks.length === 0 ? (
-            <div className="text-center text-muted-foreground pt-8">
-                <p>No tasks for today.</p>
-                <p>Create one to get started!</p>
-            </div>
-          ) : (
-            todayTasks.map((task, index) => (
-              <motion.div
-                key={task.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ delay: index * 0.05 }}
-                className={cn(
-                  "group relative flex items-center gap-3 rounded-xl border-l-4 bg-muted/30 p-4 transition-all duration-200 hover:bg-muted/50",
-                  priorityMap[task.priority]?.color || "border-l-primary",
-                  task.completed && "opacity-60"
-                )}
-              >
-                <button
-                  onClick={() => handleToggleTask(task.id, task.completed)}
+        <div className="space-y-3 h-48 overflow-y-auto pr-1">
+          <AnimatePresence>
+            {isLoading ? (
+              <p className="text-muted-foreground">Loading tasks...</p>
+            ) : totalTasks === 0 ? (
+              <div className="text-center text-muted-foreground pt-8">
+                  <p>No tasks for today.</p>
+                  <p>Create one to get started!</p>
+              </div>
+            ) : (
+              todayTasks.map((task, index) => (
+                <motion.div
+                  key={task.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  transition={{ delay: index * 0.05 }}
                   className={cn(
-                    "relative flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200",
-                    task.completed
-                      ? "border-success bg-success"
-                      : "border-muted-foreground hover:border-primary"
+                    "group relative flex items-center gap-3 rounded-xl border-l-4 bg-muted/30 p-3 pr-8 transition-all duration-200 hover:bg-muted/50",
+                    priorityMap[task.priority]?.color || "border-l-primary",
+                    task.completed && "opacity-60"
                   )}
                 >
-                  <AnimatePresence>
-                    {task.completed && (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        exit={{ scale: 0 }}
-                      >
-                        <Check className="h-3 w-3 text-success-foreground" />
-                      </motion.div>
+                  <button
+                    onClick={() => handleToggleTask(task.id, task.completed)}
+                    className={cn(
+                      "relative flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200",
+                      task.completed
+                        ? "border-success bg-success"
+                        : "border-muted-foreground hover:border-primary"
                     )}
-                  </AnimatePresence>
-                </button>
+                  >
+                    <AnimatePresence>
+                      {task.completed && (
+                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
+                          <Check className="h-3 w-3 text-success-foreground" />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </button>
 
-                <span
-                  className={cn(
-                    "flex-1 text-sm font-medium transition-all duration-200",
-                    task.completed && "text-muted-foreground line-through"
-                  )}
-                >
-                  {task.title}
-                </span>
+                  <span className={cn("flex-1 text-sm font-medium truncate", task.completed && "text-muted-foreground line-through")}>
+                    {task.title}
+                  </span>
 
-                <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="absolute right-1 top-1/2 -translate-y-1/2 text-destructive opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10"
-                    onClick={() => setTaskToDelete(task.id)}
-                >
-                    <MinusCircle className="h-4 w-4" />
-                </Button>
-
-                <AnimatePresence>
-                  {celebratingId === task.id && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0 }}
-                      className="absolute right-4"
-                    >
-                      <Sparkles className="h-5 w-5 text-warning animate-pulse" />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            ))
-          )}
-        </AnimatePresence>
+                  <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 text-destructive opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10"
+                      onClick={() => setTaskToDelete(task.id)}
+                  >
+                      <MinusCircle className="h-4 w-4" />
+                  </Button>
+                </motion.div>
+              ))
+            )}
+          </AnimatePresence>
+        </div>
       </div>
       
       <AlertDialog open={!!taskToDelete} onOpenChange={(open) => !open && setTaskToDelete(null)}>
@@ -200,6 +173,6 @@ export function DailyFocus() {
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }

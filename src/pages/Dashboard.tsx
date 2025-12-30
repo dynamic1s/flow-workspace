@@ -1,24 +1,31 @@
-import { Target, TrendingUp, Flame, Clock } from "lucide-react";
+import { useState } from 'react';
+import { Target, TrendingUp, Flame, Clock, Plus } from "lucide-react";
 import { ProgressRing } from "@/components/dashboard/ProgressRing";
 import { DailyFocus } from "@/components/dashboard/DailyFocus";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { FocusTimer } from "@/components/focus/FocusTimer";
 import { MasteryProgress } from "@/components/focus/MasteryProgress";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSkills } from "@/hooks/useSkills";
+import { useGoals } from "@/hooks/useGoals";
 import { useTasks } from "@/hooks/useTasks";
+import { CreateGoalDialog } from "@/components/goals/CreateGoalDialog";
+import { CalendarView } from "@/components/calendar/CalendarView";
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { skills, getTotalSeconds } = useSkills();
-  const { todayTasks, completionRate } = useTasks();
+  const { goals, isLoading: goalsLoading } = useGoals();
+  const { todayTasks, completionRate, completedTodayCount } = useTasks();
+  const [isCreateGoalOpen, setCreateGoalOpen] = useState(false);
   
-  const totalHours = Math.floor(getTotalSeconds() / 3600);
+  const totalSeconds = goals.reduce((acc, goal) => acc + goal.total_seconds, 0);
+  const totalHours = Math.floor(totalSeconds / 3600);
   const displayName = user?.user_metadata?.full_name?.split(' ')[0] || 'there';
   const remainingTasks = todayTasks.filter(t => !t.completed).length;
 
   return (
     <div className="container max-w-6xl py-8">
+      <CreateGoalDialog open={isCreateGoalOpen} onOpenChange={setCreateGoalOpen} />
+
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground">Good morning, {displayName}</h1>
@@ -38,29 +45,31 @@ export default function Dashboard() {
           delay={0}
         />
         <StatsCard
-          title="Active Skills"
-          value={skills.length}
+          title="Active Goals"
+          value={goals.length}
           change="Being tracked"
           icon={Target}
           trend="up"
           delay={0.1}
         />
         <StatsCard
-          title="Current Streak"
-          value="7 days"
-          change="Personal best!"
+          title="Tasks Done Today"
+          value={completedTodayCount}
+          change="Keep it up!"
           icon={Flame}
           trend="up"
           delay={0.2}
         />
-        <StatsCard
-          title="Productivity"
-          value={`${Math.round(completionRate)}%`}
-          change="+12% this week"
-          icon={TrendingUp}
-          trend="up"
-          delay={0.3}
-        />
+        <button onClick={() => setCreateGoalOpen(true)} className="text-left">
+          <StatsCard
+            title="Create Goal"
+            value=""
+            change="Start a new journey"
+            icon={Plus}
+            trend="up"
+            delay={0.3}
+          />
+        </button>
       </div>
 
       {/* Focus Timer & Mastery Progress */}
@@ -88,26 +97,9 @@ export default function Dashboard() {
         <DailyFocus />
       </div>
 
-      {/* Quick Actions */}
+      {/* Calendar View */}
       <div className="mt-8">
-        <h2 className="mb-4 text-lg font-semibold text-foreground">Quick Actions</h2>
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {[
-            { label: "Start Focus", emoji: "🎯" },
-            { label: "Add Task", emoji: "➕" },
-            { label: "View Calendar", emoji: "📅" },
-            { label: "Team Chat", emoji: "💬" },
-          ].map((action, i) => (
-            <button
-              key={action.label}
-              className="glass-card flex items-center gap-3 rounded-xl p-4 text-left transition-all duration-200 hover:scale-[1.02] hover:bg-muted/50"
-              style={{ animationDelay: `${i * 0.1}s` }}
-            >
-              <span className="text-2xl">{action.emoji}</span>
-              <span className="text-sm font-medium text-foreground">{action.label}</span>
-            </button>
-          ))}
-        </div>
+        <CalendarView />
       </div>
     </div>
   );

@@ -156,6 +156,7 @@ export type Database = {
           name: string
           project_id: string | null
           total_seconds: number
+          type: string | null
           updated_at: string
           user_id: string
         }
@@ -168,6 +169,7 @@ export type Database = {
           name: string
           project_id?: string | null
           total_seconds?: number
+          type?: string | null
           updated_at?: string
           user_id: string
         }
@@ -180,6 +182,7 @@ export type Database = {
           name?: string
           project_id?: string | null
           total_seconds?: number
+          type?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -202,7 +205,6 @@ export type Database = {
           due_date: string | null
           id: string
           priority: number
-          skill_id: string | null
           title: string
           updated_at: string
           user_id: string
@@ -215,7 +217,6 @@ export type Database = {
           due_date?: string | null
           id?: string
           priority?: number
-          skill_id?: string | null
           title: string
           updated_at?: string
           user_id: string
@@ -228,20 +229,11 @@ export type Database = {
           due_date?: string | null
           id?: string
           priority?: number
-          skill_id?: string | null
           title?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "tasks_skill_id_fkey"
-            columns: ["skill_id"]
-            isOneToOne: false
-            referencedRelation: "skills"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       time_entries: {
         Row: {
@@ -250,7 +242,7 @@ export type Database = {
           end_time: string
           id: string
           notes: string | null
-          skill_id: string
+          goal_id: string
           start_time: string
           user_id: string
         }
@@ -260,7 +252,7 @@ export type Database = {
           end_time: string
           id?: string
           notes?: string | null
-          skill_id: string
+          goal_id: string
           start_time: string
           user_id: string
         }
@@ -270,18 +262,59 @@ export type Database = {
           end_time?: string
           id?: string
           notes?: string | null
-          skill_id?: string
+          goal_id?: string
           start_time?: string
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "time_entries_skill_id_fkey"
-            columns: ["skill_id"]
+            foreignKeyName: "time_entries_goal_id_fkey"
+            columns: ["goal_id"]
             isOneToOne: false
             referencedRelation: "skills"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      plans: {
+        Row: {
+          id: string
+          user_id: string
+          goal_id: string
+          title: string
+          status: string
+          completed: boolean | null
+          to_be_completed_date: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          goal_id: string
+          title: string
+          status: string
+          completed?: boolean | null
+          to_be_completed_date?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          goal_id?: string
+          title?: string
+          status?: string
+          completed?: boolean | null
+          to_be_completed_date?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plans_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          }
         ]
       }
     }

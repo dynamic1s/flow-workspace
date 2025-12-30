@@ -1,7 +1,8 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { format } from 'date-fns';
-import { BookOpen, CheckCircle2, Plus, Link2, Sparkles, Calendar } from 'lucide-react';
+import { format, isToday, isYesterday } from 'date-fns';
+import { BookOpen, CheckCircle2, Plus, Link2, Sparkles, Calendar, Edit2, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -10,34 +11,102 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { useJournal } from '@/hooks/useJournal';
 import { useTasks } from '@/hooks/useTasks';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const MOODS = [
   { emoji: '😊', label: 'Great', value: 'great' },
-  { emoji: '🙂', label: 'Good', value: 'good' },
+  { emoji: '🙂', label: 'Good', 'value': 'good' },
   { emoji: '😐', label: 'Okay', value: 'okay' },
   { emoji: '😔', label: 'Low', value: 'low' },
   { emoji: '😤', label: 'Frustrated', value: 'frustrated' },
 ];
 
+interface AnnotationEditDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  initialAnnotationContent: string;
+  onSave: (newAnnotationContent: string) => void;
+}
+
+function AnnotationEditDialog({ open, onOpenChange, initialAnnotationContent, onSave }: AnnotationEditDialogProps) {
+  const [editedAnnotation, setEditedAnnotation] = useState(initialAnnotationContent);
+
+  useEffect(() => {
+    setEditedAnnotation(initialAnnotationContent);
+  }, [initialAnnotationContent]);
+
+  const handleSaveClick = () => {
+    onSave(editedAnnotation);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Edit2 className="w-5 h-5" />
+            Edit Annotation
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-4">
+          <Textarea
+            value={editedAnnotation}
+            onChange={(e) => setEditedAnnotation(e.target.value)}
+            placeholder="Edit your reflection for this task..."
+            className="resize-none"
+            rows={3}
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSaveClick}>
+            Save Changes
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Journal() {
-  const { todayEntry, entries, createEntry, updateEntry, createAnnotation, annotations } = useJournal();
-  const { todayTasks } = useTasks();
+  const { todayEntry, entries, createEntry, updateEntry, createAnnotation, updateAnnotation, annotations } = useJournal();
+  const { tasks: allTasks, toggleTask } = useTasks(); 
   const [content, setContent] = useState(todayEntry?.content || '');
   const [mood, setMood] = useState(todayEntry?.mood || '');
+  const [selectedEntryDate, setSelectedEntryDate] = useState(new Date().toISOString().split('T')[0]);
+  const [taskFilter, setTaskFilter] = useState('all');
+
+  useEffect(() => {
+    const entry = entries.find(e => e.entry_date === selectedEntryDate);
+    setContent(entry?.content || '');
+    setMood(entry?.mood || '');
+  }, [selectedEntryDate, entries]);
+
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [annotation, setAnnotation] = useState('');
 
+  const [isEditAnnotationDialogOpen, setIsEditAnnotationDialogOpen] = useState(false);
+  const [annotationToEditId, setAnnotationToEditId] = useState<string | null>(null);
+  const [annotationToEditContent, setAnnotationToEditContent] = useState('');
+
+
   const handleSave = async () => {
     if (!content.trim()) return;
-    
-    if (todayEntry) {
+    const entry = entries.find(e => e.entry_date === selectedEntryDate);
+
+    if (entry) {
       await updateEntry.mutateAsync({
-        id: todayEntry.id,
+        id: entry.id,
         content: content.trim(),
         mood: mood || null,
       });
@@ -45,15 +114,17 @@ export default function Journal() {
       await createEntry.mutateAsync({
         content: content.trim(),
         mood: mood || undefined,
+        entry_date: selectedEntryDate,
       });
     }
   };
 
   const handleLinkTask = async () => {
-    if (!selectedTaskId || !todayEntry) return;
+    const entry = entries.find(e => e.entry_date === selectedEntryDate);
+    if (!selectedTaskId || !entry) return;
     
     await createAnnotation.mutateAsync({
-      journal_entry_id: todayEntry.id,
+      journal_entry_id: entry.id,
       task_id: selectedTaskId,
       annotation: annotation.trim() || undefined,
     });
@@ -63,13 +134,44 @@ export default function Journal() {
     setIsLinkDialogOpen(false);
   };
 
-  const linkedTaskIds = annotations
-    .filter(a => a.journal_entry_id === todayEntry?.id)
-    .map(a => a.task_id);
+  const handleUpdateAnnotation = async (newAnnotationContent: string) => {
+    if (!annotationToEditId) return;
+
+    await updateAnnotation.mutateAsync({
+      id: annotationToEditId,
+      annotation: newAnnotationContent.trim() || null,
+    });
+
+    setAnnotationToEditId(null);
+    setAnnotationToEditContent('');
+    setIsEditAnnotationDialogOpen(false);
+  };
+
+  const linkedAnnotations = annotations.filter(a => a.journal_entry_id === entries.find(e => e.entry_date === selectedEntryDate)?.id);
+
+  const getTaskTitle = (taskId: string) => {
+    const task = allTasks.find(t => t.id === taskId);
+    return task ? task.title : 'Unknown Task';
+  };
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const filteredTasks = allTasks.filter(task => {
+    if (taskFilter === 'overdue') {
+      return task.due_date && new Date(task.due_date) < today && !task.completed;
+    }
+    if (taskFilter === 'completed') {
+      return task.completed;
+    }
+    if (taskFilter === 'today') {
+      return task.due_date && isToday(new Date(task.due_date));
+    }
+    return true;
+  });
 
   return (
     <div className="container max-w-4xl py-8">
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -83,21 +185,19 @@ export default function Journal() {
             <h1 className="text-2xl font-bold text-foreground">Daily Journal</h1>
             <p className="text-muted-foreground">
               <Calendar className="w-4 h-4 inline mr-1" />
-              {format(new Date(), 'EEEE, MMMM d, yyyy')}
+              {format(new Date(selectedEntryDate), 'EEEE, MMMM d, yyyy')}
             </p>
           </div>
         </div>
       </motion.div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Main Journal Entry */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="lg:col-span-2 space-y-6"
         >
-          {/* Mood Selector */}
           <div className="glass-card rounded-2xl p-6">
             <h3 className="text-sm font-medium text-muted-foreground mb-3">How are you feeling today?</h3>
             <div className="flex gap-3">
@@ -119,16 +219,15 @@ export default function Journal() {
             </div>
           </div>
 
-          {/* Writing Area */}
           <div className="glass-card rounded-2xl p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-primary" />
                 Today's Reflections
               </h3>
-              {todayEntry && (
+              {entries.find(e => e.entry_date === selectedEntryDate) && (
                 <Badge variant="secondary" className="text-xs">
-                  Last saved: {format(new Date(todayEntry.updated_at), 'h:mm a')}
+                  Last saved: {format(new Date(entries.find(e => e.entry_date === selectedEntryDate)!.updated_at), 'h:mm a')}
                 </Badge>
               )}
             </div>
@@ -140,18 +239,44 @@ export default function Journal() {
               className="min-h-[300px] resize-none text-base leading-relaxed"
             />
             
+            {linkedAnnotations.length > 0 && (
+              <div className="glass-card-inner rounded-xl p-4 mt-4">
+                <h4 className="text-sm font-semibold text-foreground mb-2">Linked Tasks:</h4>
+                <div className="space-y-3">
+                  {linkedAnnotations.map((ann) => (
+                    <button
+                      key={ann.id}
+                      className="w-full text-left p-2 rounded-lg hover:bg-muted/70 transition-colors cursor-pointer group"
+                      onClick={() => {
+                        setAnnotationToEditId(ann.id);
+                        setAnnotationToEditContent(ann.annotation || '');
+                        setIsEditAnnotationDialogOpen(true);
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-muted-foreground">{getTaskTitle(ann.task_id)}</p>
+                        <Edit2 className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                      <p className="text-xs text-foreground italic pl-2 border-l-2 border-primary/50">
+                        {ann.annotation || "No annotation provided."}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center justify-between mt-4">
               <p className="text-sm text-muted-foreground">
                 {content.length} characters
               </p>
               <Button onClick={handleSave} disabled={!content.trim()}>
-                {todayEntry ? 'Update Entry' : 'Save Entry'}
+                {entries.find(e => e.entry_date === selectedEntryDate) ? 'Update Entry' : 'Save Entry'}
               </Button>
             </div>
           </div>
         </motion.div>
 
-        {/* Sidebar - Today's Completed Tasks */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -162,85 +287,127 @@ export default function Journal() {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-green-500" />
-                Completed Today
+                Tasks
               </h3>
-              <Badge variant="outline">{todayTasks.length}</Badge>
+              <Select onValueChange={setTaskFilter} defaultValue="all">
+                <SelectTrigger className="w-[130px]">
+                  <Filter className="w-4 h-4 mr-2" />
+                  <SelectValue placeholder="Filter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="overdue">Overdue</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="today">Today's</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             
-            {todayTasks.length === 0 ? (
+            {filteredTasks.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
-                No tasks completed yet today
+                No tasks match the filter.
               </p>
             ) : (
-              <div className="space-y-2">
-                {todayTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className={cn(
-                      "p-3 rounded-lg bg-muted/50 flex items-center justify-between gap-2",
-                      linkedTaskIds.includes(task.id) && "ring-1 ring-primary/50"
-                    )}
-                  >
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      <span className="text-sm truncate">{task.title}</span>
-                    </div>
-                    {todayEntry && !linkedTaskIds.includes(task.id) && (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => {
-                          setSelectedTaskId(task.id);
-                          setIsLinkDialogOpen(true);
-                        }}
-                      >
-                        <Link2 className="w-3.5 h-3.5" />
-                      </Button>
-                    )}
-                    {linkedTaskIds.includes(task.id) && (
-                      <Badge variant="secondary" className="text-xs">
-                        Linked
-                      </Badge>
-                    )}
-                  </div>
-                ))}
-              </div>
+              <ScrollArea className="h-60">
+                <div className="space-y-2 pr-4">
+                  {filteredTasks.map((task) => {
+                      const isOverdue = task.due_date && new Date(task.due_date) < today && !task.completed;
+                      return (
+                        <div
+                          key={task.id}
+                          className={cn(
+                            "p-3 rounded-lg bg-muted/50 flex items-center justify-between gap-2",
+                            isOverdue && 'bg-destructive/20',
+                            linkedAnnotations.some(a => a.task_id === task.id) && "ring-1 ring-primary/50"
+                          )}
+                        >
+                           <div className="flex items-start gap-3 flex-1 min-w-0">
+                            <button onClick={() => toggleTask.mutate({ id: task.id, completed: !task.completed })} className="mt-1">
+                              <CheckCircle2 className={cn("w-4 h-4 text-green-500 flex-shrink-0", task.completed ? 'opacity-100' : 'opacity-30')} />
+                            </button>
+                            <div className="flex-1">
+                              <span className={cn("text-sm truncate font-medium", isOverdue && 'text-destructive-foreground', task.completed && 'line-through text-muted-foreground')}>{task.title}</span>
+                              {task.due_date && (
+                                <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                  <Calendar className="w-3 h-3" />
+                                  {format(new Date(task.due_date), 'MMM d')}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          {entries.find(e => e.entry_date === selectedEntryDate) && !linkedAnnotations.some(a => a.task_id === task.id) && (
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => {
+                                setSelectedTaskId(task.id);
+                                setIsLinkDialogOpen(true);
+                              }}
+                            >
+                              <Link2 className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
+                          {linkedAnnotations.some(a => a.task_id === task.id) && (
+                            <Badge variant="secondary" className="text-xs">
+                              Linked
+                            </Badge>
+                          )}
+                        </div>
+                      )
+                  })}
+                </div>
+              </ScrollArea>
             )}
           </div>
 
-          {/* Previous Entries */}
           <div className="glass-card rounded-2xl p-6">
             <h3 className="text-lg font-semibold text-foreground mb-4">
               Previous Entries
             </h3>
             
-            {entries.filter(e => e.id !== todayEntry?.id).slice(0, 5).length === 0 ? (
+            {entries.filter(e => e.id !== todayEntry?.id).length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
                 No previous entries yet
               </p>
             ) : (
-              <div className="space-y-3">
-                {entries.filter(e => e.id !== todayEntry?.id).slice(0, 5).map((entry) => (
-                  <button
-                    key={entry.id}
-                    className="w-full p-3 rounded-lg bg-muted/50 text-left hover:bg-muted transition-colors"
-                  >
-                    <p className="text-xs text-muted-foreground mb-1">
-                      {format(new Date(entry.entry_date), 'MMM d, yyyy')}
-                      {entry.mood && ` • ${MOODS.find(m => m.value === entry.mood)?.emoji}`}
-                    </p>
-                    <p className="text-sm text-foreground line-clamp-2">
-                      {entry.content}
-                    </p>
-                  </button>
-                ))}
-              </div>
+              <ScrollArea className="h-[280px] pr-4">
+                <div className="space-y-3">
+                  {entries.map((entry) => (
+                    <button
+                      key={entry.id}
+                      onClick={() => setSelectedEntryDate(entry.entry_date)}
+                      className="w-full p-3 rounded-lg bg-muted/50 text-left hover:bg-muted transition-colors"
+                    >
+                      <p className="text-xs text-muted-foreground mb-1">
+                        {format(new Date(entry.entry_date), 'MMM d, yyyy')}
+                        {entry.mood && ` • ${MOODS.find(m => m.value === entry.mood)?.emoji}`}
+                      </p>
+                      <p className="text-sm text-foreground line-clamp-2">
+                        {entry.content}
+                      </p>
+                      {annotations.filter(ann => ann.journal_entry_id === entry.id).length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {annotations.filter(ann => ann.journal_entry_id === entry.id).map((ann) => (
+                            <div key={ann.id} className="flex flex-col gap-0.5">
+                              <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                                <Link2 className="w-3 h-3 text-primary/70"/> {getTaskTitle(ann.task_id)}
+                              </p>
+                              <p className="text-xs text-foreground italic pl-4 border-l border-primary/30">
+                                {ann.annotation || "No annotation."}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </ScrollArea>
             )}
           </div>
         </motion.div>
       </div>
 
-      {/* Link Task Dialog */}
       <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -272,6 +439,13 @@ export default function Journal() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AnnotationEditDialog
+        open={isEditAnnotationDialogOpen}
+        onOpenChange={setIsEditAnnotationDialogOpen}
+        initialAnnotationContent={annotationToEditContent}
+        onSave={handleUpdateAnnotation}
+      />
     </div>
   );
 }

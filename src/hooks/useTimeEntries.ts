@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export interface TimeEntry {
   id: string;
   user_id: string;
-  skill_id: string;
+  goal_id: string;
   start_time: string;
   end_time: string;
   duration_seconds: number;
@@ -19,11 +19,11 @@ export interface DayActivity {
   entries: TimeEntry[];
 }
 
-export function useTimeEntries(skillId?: string) {
+export function useTimeEntries(goalId?: string) {
   const { user } = useAuth();
 
   const entriesQuery = useQuery({
-    queryKey: ['time-entries', user?.id, skillId],
+    queryKey: ['time-entries', user?.id, goalId],
     queryFn: async () => {
       if (!user) return [];
       
@@ -33,8 +33,8 @@ export function useTimeEntries(skillId?: string) {
         .eq('user_id', user.id)
         .order('start_time', { ascending: false });
       
-      if (skillId) {
-        query = query.eq('skill_id', skillId);
+      if (goalId) {
+        query = query.eq('goal_id', goalId);
       }
       
       const { data, error } = await query;

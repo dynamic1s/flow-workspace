@@ -6,7 +6,7 @@ interface TimerState {
   isRunning: boolean;
   startTime: number | null;
   elapsedSeconds: number;
-  skillId: string | null;
+  goalId: string | null; // Renamed from skillId for UI consistency
 }
 
 export function useTimer() {
@@ -14,7 +14,7 @@ export function useTimer() {
     isRunning: false,
     startTime: null,
     elapsedSeconds: 0,
-    skillId: null,
+    goalId: null,
   });
   
   const intervalRef = useRef<number | null>(null);
@@ -24,9 +24,14 @@ export function useTimer() {
     const savedTimer = localStorage.getItem(TIMER_STORAGE_KEY);
     if (savedTimer) {
       try {
-        const parsed = JSON.parse(savedTimer) as TimerState;
+        // Need to handle old format of `skillId` in local storage
+        const parsed = JSON.parse(savedTimer);
+        if (parsed.skillId) {
+          parsed.goalId = parsed.skillId;
+          delete parsed.skillId;
+        }
+
         if (parsed.isRunning && parsed.startTime) {
-          // Calculate elapsed time since timer was started
           const now = Date.now();
           const elapsed = Math.floor((now - parsed.startTime) / 1000);
           setState({
@@ -69,13 +74,13 @@ export function useTimer() {
     };
   }, [state.isRunning, state.startTime]);
 
-  const start = useCallback((skillId: string) => {
+  const start = useCallback((goalId: string) => {
     const now = Date.now();
     setState({
       isRunning: true,
       startTime: now,
       elapsedSeconds: 0,
-      skillId,
+      goalId,
     });
   }, []);
 
@@ -88,7 +93,6 @@ export function useTimer() {
 
   const resume = useCallback(() => {
     if (state.elapsedSeconds > 0) {
-      // Adjust start time to account for already elapsed time
       const now = Date.now();
       const adjustedStartTime = now - (state.elapsedSeconds * 1000);
       setState(prev => ({
@@ -101,7 +105,7 @@ export function useTimer() {
 
   const stop = useCallback(() => {
     const result = {
-      skillId: state.skillId,
+      goalId: state.goalId, // Maps back to skillId for the database
       startTime: state.startTime ? new Date(state.startTime) : null,
       endTime: new Date(),
       durationSeconds: state.elapsedSeconds,
@@ -111,19 +115,19 @@ export function useTimer() {
       isRunning: false,
       startTime: null,
       elapsedSeconds: 0,
-      skillId: null,
+      goalId: null,
     });
     localStorage.removeItem(TIMER_STORAGE_KEY);
     
     return result;
-  }, [state.skillId, state.startTime, state.elapsedSeconds]);
+  }, [state.goalId, state.startTime, state.elapsedSeconds]);
 
   const reset = useCallback(() => {
     setState({
       isRunning: false,
       startTime: null,
       elapsedSeconds: 0,
-      skillId: null,
+      goalId: null,
     });
     localStorage.removeItem(TIMER_STORAGE_KEY);
   }, []);

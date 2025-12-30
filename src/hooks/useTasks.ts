@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,7 +7,6 @@ import { toast } from 'sonner';
 export interface Task {
   id: string;
   user_id: string;
-  skill_id: string | null;
   title: string;
   description: string | null;
   completed: boolean;
@@ -17,27 +17,22 @@ export interface Task {
   updated_at: string;
 }
 
-export function useTasks(skillId?: string) {
+// The useTasks hook no longer accepts a goalId
+export function useTasks() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const tasksQuery = useQuery({
-    queryKey: ['tasks', user?.id, skillId],
+    queryKey: ['tasks', user?.id],
     queryFn: async () => {
       if (!user) return [];
       
-      let query = supabase
+      const { data, error } = await supabase
         .from('tasks')
         .select('*')
         .eq('user_id', user.id)
-        .order('priority', { ascending: false })
-        .order('created_at', { ascending: false });
-      
-      if (skillId) {
-        query = query.eq('skill_id', skillId);
-      }
-      
-      const { data, error } = await query;
+        .order('due_date', { ascending: true, nullsFirst: false })
+        .order('priority', { ascending: false });
       
       if (error) throw error;
       return data as Task[];
@@ -61,7 +56,8 @@ export function useTasks(skillId?: string) {
         .eq('user_id', user.id)
         .gte('due_date', today.toISOString())
         .lt('due_date', tomorrow.toISOString())
-        .order('created_at', { ascending: false });
+        .order('due_date', { ascending: true, nullsFirst: false })
+        .order('priority', { ascending: false });
       
       if (error) throw error;
       return data as Task[];
@@ -70,7 +66,7 @@ export function useTasks(skillId?: string) {
   });
 
   const createTask = useMutation({
-    mutationFn: async (task: { title: string; skill_id?: string; description?: string; priority?: number; due_date?: string }) => {
+    mutationFn: async (task: { title: string; description?: string; priority?: number; due_date?: string }) => {
       if (!user) throw new Error('Not authenticated');
       
       const { data, error } = await supabase
@@ -78,7 +74,6 @@ export function useTasks(skillId?: string) {
         .insert({
           user_id: user.id,
           title: task.title,
-          skill_id: task.skill_id || null,
           description: task.description || null,
           priority: task.priority || 0,
           due_date: task.due_date || new Date().toISOString(),
@@ -144,7 +139,6 @@ export function useTasks(skillId?: string) {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['tasks-today'] });
-      queryClient.invalidateQueries({ queryKey: ['skills'] });
       if (data.completed) {
         toast.success('Task completed!');
       }
@@ -181,8 +175,18 @@ export function useTasks(skillId?: string) {
     (todayTasksQuery.data?.length || 1)
   ) * 100;
 
+  const allTasks = tasksQuery.data || [];
+  const completedTodayCount = allTasks.filter(t => {
+    if (!t.completed_at) return false;
+    const completedDate = new Date(t.completed_at);
+    const today = new Date();
+    return completedDate.getDate() === today.getDate() &&
+           completedDate.getMonth() === today.getMonth() &&
+           completedDate.getFullYear() === today.getFullYear();
+  }).length;
+
   return {
-    tasks: tasksQuery.data || [],
+    tasks: allTasks,
     todayTasks: todayTasksQuery.data || [],
     isLoading: tasksQuery.isLoading || todayTasksQuery.isLoading,
     error: tasksQuery.error || todayTasksQuery.error,
@@ -191,5 +195,6 @@ export function useTasks(skillId?: string) {
     toggleTask,
     deleteTask,
     completionRate,
+    completedTodayCount,
   };
 }

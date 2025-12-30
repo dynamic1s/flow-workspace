@@ -3,13 +3,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-export interface Skill {
+export interface Goal {
   id: string;
   user_id: string;
   name: string;
   description: string | null;
   color: string;
   icon: string;
+  type: 'skill' | 'non-skill'; 
   total_seconds: number;
   created_at: string;
   updated_at: string;
@@ -18,7 +19,7 @@ export interface Skill {
 export interface TimeEntry {
   id: string;
   user_id: string;
-  skill_id: string;
+  goal_id: string;
   start_time: string;
   end_time: string;
   duration_seconds: number;
@@ -26,12 +27,12 @@ export interface TimeEntry {
   created_at: string;
 }
 
-export function useSkills() {
+export function useGoals() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const skillsQuery = useQuery({
-    queryKey: ['skills', user?.id],
+  const goalsQuery = useQuery({
+    queryKey: ['goals', user?.id],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
@@ -41,42 +42,43 @@ export function useSkills() {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as Skill[];
+      return data.map(g => ({ ...g, total_seconds: g.total_seconds || 0 })) as Goal[];
     },
     enabled: !!user,
   });
 
-  const createSkill = useMutation({
-    mutationFn: async (skill: { name: string; description?: string; color?: string; icon?: string }) => {
+  const createGoal = useMutation({
+    mutationFn: async (goal: { name: string; description?: string; color?: string; icon?: string; type: 'skill' | 'non-skill' }) => {
       if (!user) throw new Error('Not authenticated');
       
       const { data, error } = await supabase
         .from('skills')
         .insert({
           user_id: user.id,
-          name: skill.name,
-          description: skill.description || null,
-          color: skill.color || '#6366F1',
-          icon: skill.icon || 'target',
+          name: goal.name,
+          description: goal.description || null,
+          color: goal.color || '#6366F1',
+          icon: goal.icon || 'target',
+          type: goal.type,
         })
         .select()
         .single();
       
       if (error) throw error;
-      return data as Skill;
+      return data as Goal;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['skills'] });
-      toast.success('Skill created successfully');
+      queryClient.invalidateQueries({ queryKey: ['goals'] });
+      toast.success('Goal created successfully');
     },
     onError: (error) => {
-      toast.error('Failed to create skill: ' + error.message);
+      toast.error('Failed to create goal: ' + error.message);
     },
   });
 
   const addTimeEntry = useMutation({
     mutationFn: async (entry: {
-      skill_id: string;
+      goal_id: string;
       start_time: Date;
       end_time: Date;
       duration_seconds: number;
@@ -88,7 +90,7 @@ export function useSkills() {
         .from('time_entries')
         .insert({
           user_id: user.id,
-          skill_id: entry.skill_id,
+          goal_id: entry.goal_id,
           start_time: entry.start_time.toISOString(),
           end_time: entry.end_time.toISOString(),
           duration_seconds: entry.duration_seconds,
@@ -100,9 +102,9 @@ export function useSkills() {
       if (error) throw error;
       return data as TimeEntry;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['skills'] });
-      queryClient.invalidateQueries({ queryKey: ['time-entries'] });
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['goals'] });
+      queryClient.invalidateQueries({ queryKey: ['time-entries', variables.goal_id] });
       toast.success('Time logged successfully');
     },
     onError: (error) => {
@@ -110,24 +112,11 @@ export function useSkills() {
     },
   });
 
-  const getTotalSeconds = () => {
-    if (!skillsQuery.data) return 0;
-    return skillsQuery.data.reduce((acc, skill) => acc + skill.total_seconds, 0);
-  };
-
-  const getMasteryProgress = () => {
-    const totalSeconds = getTotalSeconds();
-    const targetSeconds = 36000000; // 10,000 hours in seconds
-    return Math.min((totalSeconds / targetSeconds) * 100, 100);
-  };
-
   return {
-    skills: skillsQuery.data || [],
-    isLoading: skillsQuery.isLoading,
-    error: skillsQuery.error,
-    createSkill,
+    goals: goalsQuery.data || [],
+    isLoading: goalsQuery.isLoading,
+    error: goalsQuery.error,
+    createGoal,
     addTimeEntry,
-    getTotalSeconds,
-    getMasteryProgress,
   };
 }
