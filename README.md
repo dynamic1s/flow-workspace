@@ -1,73 +1,48 @@
-# Welcome to your Lovable project
+🌊 Flow
+Flow is an all-in-one productivity ecosystem designed to help you stay focused, plan your growth, and manage your knowledge in one seamless interface.
 
-## Project info
+🌟 Key Features
+⏱️ Focus & Planning
+Focus Timer: Customizable Pomodoro-style timer to maintain deep work sessions.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+Task Setting: Integrated task manager to define and track daily objectives.
 
-## How can I edit this code?
+Consistency Calendar: A visual heat-map/calendar to track your streaks and daily progress.
 
-There are several ways of editing your application.
+📝 Reflection & Documentation
+Journal Entries: A private space for daily reflections and notes.
 
-**Use Lovable**
+Task Annotations: Add specific context or sub-steps reflections to your completed tasks.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+📚 Knowledge Management
+Resource Manager: A centralized library for learning materials, documentation, and bookmarks, categorized by skill or goal.
 
-Changes made via Lovable will be committed automatically to this repo.
+🛠️ Technical Architecture
+Frontend: React (Vite) + Tailwind CSS
 
-**Use your preferred IDE**
+Backend: Supabase (Database & Authentication)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Hosting: Firebase Hosting
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+State Management: React Context API / Hooks
 
-Follow these steps:
+🚀 Getting Started
+Prerequisites
+Node.js (v18+)
+A Supabase Project
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+Installation
+Clone the Repository
+git clone https://github.com/your-username/flow.git
+cd flow
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Install Dependencies
+npm install
+Environment Setup Create a .env.local file in the root:
 
-# Step 3: Install the necessary dependencies.
-npm i
+Code snippet
+VITE_SUPABASE_URL=your_project_url
+VITE_SUPABASE_ANON_KEY=your_anon_key
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+Run Locally
 npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
