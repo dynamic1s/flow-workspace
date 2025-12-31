@@ -138,11 +138,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                 {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
               <div className="flex items-center gap-1">
-                <Link to="/settings">
-                  <Button variant="ghost" size="icon-sm">
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                </Link>
+                
                 <Button variant="ghost" size="icon-sm" onClick={signOut}>
                   <LogOut className="h-4 w-4" />
                 </Button>

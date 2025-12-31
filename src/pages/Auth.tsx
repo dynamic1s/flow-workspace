@@ -116,9 +116,7 @@ export default function Auth() {
             <Zap className="w-8 h-8 text-primary" />
           </motion.div>
           <h1 className="text-3xl font-bold text-foreground mb-2">Welcome to Flow</h1>
-          <p className="text-muted-foreground">
-            Track your mastery journey with the 10,000 hour rule
-          </p>
+         
         </div>
 
         {/* Auth Card */}
@@ -269,7 +267,7 @@ export default function Auth() {
           </Button>
 
           {/* Features list */}
-          <div className="space-y-3 mt-6 pt-6 border-t border-border">
+          {/*<div className="space-y-3 mt-6 pt-6 border-t border-border">
             {[
               { icon: Clock, text: 'Focus timer with live tracking' },
               { icon: Target, text: 'Track progress to 10,000 hours' },
@@ -288,7 +286,7 @@ export default function Auth() {
                 <span className="text-sm">{feature.text}</span>
               </motion.div>
             ))}
-          </div>
+            </div>*/}
         </motion.div>
 
         {/* Footer */}
